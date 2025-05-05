@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Deny all reads/writes by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Allow restaurant owners (authenticated users) to upload images to their own folder
+    // Images are stored under /restaurants/{userId}/images/{fileName}
+    match /restaurants/{userId}/images/{fileName} {
+      // Only the owner can upload (write) images to their folder
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Anyone can read images (e.g., for the public menu), adjust if needed
+      allow read: if true; 
+    }
+  }
+}
