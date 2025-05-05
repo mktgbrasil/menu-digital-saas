@@ -1,78 +1,106 @@
 // /src/app/login/page.tsx
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // Use next/navigation for App Router
+"use client"; // Diretiva adicionada
+
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebaseConfig';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { auth } from '../../lib/firebaseConfig'; // Caminho corrigido
+import { useAuth } from '../../context/AuthContext'; // Caminho corrigido
+import { Button } from '../../components/ui/button'; // Caminho corrigido
+import { Input } from '../../components/ui/input'; // Caminho corrigido
+import { Label } from '../../components/ui/label'; // Caminho corrigido
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card'; // Caminho corrigido
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLogin, setIsLogin] = useState(true); // Toggle between Login and Sign Up
+  const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
-  const { currentUser } = useAuth(); // Get current user state
+  const { currentUser } = useAuth();
 
-  // Redirect if already logged in
+  useEffect(() => {
+    if (currentUser) {
+      router.push('/admin');
+    }
+  }, [currentUser, router]);
+
   if (currentUser) {
-    router.push('/admin'); // Redirect to admin dashboard if logged in
-    return null; // Render nothing while redirecting
+    return null; 
   }
 
   const handleAuthAction = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError(null); // Clear previous errors
+    setError(null);
 
     try {
       if (isLogin) {
-        // Sign in existing user
         await signInWithEmailAndPassword(auth, email, password);
-        console.log('User signed in successfully');
-        router.push('/admin'); // Redirect to admin dashboard after login
       } else {
-        // Create new user
         await createUserWithEmailAndPassword(auth, email, password);
-        console.log('User created successfully');
-        // Optionally, create initial restaurant data in Firestore here
-        router.push('/admin'); // Redirect to admin dashboard after sign up
       }
+      // Redirection is handled by useEffect
     } catch (err: any) {
       console.error("Authentication error:", err);
-      setError(err.message || 'Falha na autenticação. Verifique suas credenciais.');
+      let friendlyMessage = 'Falha na autenticação. Verifique suas credenciais.';
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        friendlyMessage = 'E-mail ou senha inválidos.';
+      } else if (err.code === 'auth/email-already-in-use') {
+        friendlyMessage = 'Este e-mail já está em uso.';
+      } else if (err.code === 'auth/weak-password') {
+        friendlyMessage = 'A senha deve ter pelo menos 6 caracteres.';
+      }
+      setError(friendlyMessage);
     }
   };
 
   return (
-    <div>
-      <h1>{isLogin ? 'Login do Restaurante' : 'Criar Conta de Restaurante'}</h1>
-      <form onSubmit={handleAuthAction}>
-        <div>
-          <label htmlFor="email">Email:</label>
-          <input
-            type="email"
-            id="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Senha:</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit">{isLogin ? 'Entrar' : 'Criar Conta'}</button>
-      </form>
-      <button onClick={() => setIsLogin(!isLogin)}>
-        {isLogin ? 'Não tem conta? Crie uma agora' : 'Já tem conta? Faça login'}
-      </button>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold">
+            {isLogin ? 'Login do Restaurante' : 'Criar Conta de Restaurante'}
+          </CardTitle>
+          <CardDescription>
+            {isLogin ? 'Entre com seu e-mail e senha' : 'Preencha os dados para criar sua conta'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleAuthAction} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                type="email"
+                id="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                type="password"
+                id="password"
+                placeholder="******"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+            <Button type="submit" className="w-full">
+              {isLogin ? 'Entrar' : 'Criar Conta'}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter className="text-center">
+          <Button variant="link" onClick={() => setIsLogin(!isLogin)} className="w-full">
+            {isLogin ? 'Não tem conta? Crie uma agora' : 'Já tem conta? Faça login'}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
-
